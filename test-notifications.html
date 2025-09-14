@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест уведомлений - English Learning PWA</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        
+        .test-section h2 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .test-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid #ff9800;
+        }
+        
+        .status.info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 1px solid #2196F3;
+        }
+        
+        .device-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Тест системы уведомлений</h1>
+        
+        <div class="test-section">
+            <h2>📱 Информация об устройстве</h2>
+            <div class="device-info" id="deviceInfo">
+                Загрузка информации об устройстве...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Проверка поддержки</h2>
+            <div id="supportStatus" class="status info">
+                Проверка поддержки уведомлений...
+            </div>
+            <button class="test-button" onclick="checkSupport()">Проверить поддержку</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔐 Разрешения</h2>
+            <div id="permissionStatus" class="status info">
+                Проверка статуса разрешений...
+            </div>
+            <button class="test-button" onclick="requestPermission()">Запросить разрешения</button>
+            <button class="test-button" onclick="checkPermission()">Проверить статус</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>📨 Тестовые уведомления</h2>
+            <button class="test-button" onclick="testBasicNotification()">Базовое уведомление</button>
+            <button class="test-button" onclick="testTaskCompletion()">Выполнение задания</button>
+            <button class="test-button" onclick="testLevelUp()">Повышение уровня</button>
+            <button class="test-button" onclick="testMotivational()">Мотивационное</button>
+            <button class="test-button" onclick="testScheduled()">Запланированное</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>⚙️ Настройки уведомлений</h2>
+            <div class="notification-settings-section">
+                <div class="notification-setting-item">
+                    <label class="notification-toggle">
+                        <input type="checkbox" id="testEnableNotifications" onchange="toggleTestSetting('enableNotifications', this.checked)">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Включить уведомления</span>
+                    </label>
+                </div>
+                
+                <div class="notification-setting-item">
+                    <label class="notification-toggle">
+                        <input type="checkbox" id="testEnableTaskNotifications" onchange="toggleTestSetting('enableTaskNotifications', this.checked)">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Уведомления о заданиях</span>
+                    </label>
+                </div>
+                
+                <div class="notification-setting-item">
+                    <label class="notification-toggle">
+                        <input type="checkbox" id="testEnableLevelNotifications" onchange="toggleTestSetting('enableLevelNotifications', this.checked)">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Уведомления о уровнях</span>
+                    </label>
+                </div>
+            </div>
+            <button class="test-button" onclick="testWithSettings()">Тест с настройками</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Лог событий</h2>
+            <div class="log" id="eventLog">
+                Лог событий будет отображаться здесь...
+            </div>
+            <button class="test-button" onclick="clearLog()">Очистить лог</button>
+        </div>
+    </div>
+
+    <script>
+        // Логирование событий
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> <span style="color: ${getTypeColor(type)};">${message}</span>`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function getTypeColor(type) {
+            const colors = {
+                'info': '#2196F3',
+                'success': '#4CAF50',
+                'warning': '#ff9800',
+                'error': '#f44336'
+            };
+            return colors[type] || '#2196F3';
+        }
+        
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = 'Лог очищен...';
+        }
+        
+        // Проверка поддержки уведомлений
+        function checkSupport() {
+            const isSupported = 'Notification' in window && 'serviceWorker' in navigator;
+            const statusElement = document.getElementById('supportStatus');
+            
+            if (isSupported) {
+                statusElement.className = 'status success';
+                statusElement.textContent = '✅ Уведомления поддерживаются';
+                log('✅ Уведомления поддерживаются', 'success');
+            } else {
+                statusElement.className = 'status error';
+                statusElement.textContent = '❌ Уведомления не поддерживаются';
+                log('❌ Уведомления не поддерживаются', 'error');
+            }
+            
+            return isSupported;
+        }
+        
+        // Проверка статуса разрешений
+        function checkPermission() {
+            if (!checkSupport()) return;
+            
+            const permission = Notification.permission;
+            const statusElement = document.getElementById('permissionStatus');
+            
+            switch (permission) {
+                case 'granted':
+                    statusElement.className = 'status success';
+                    statusElement.textContent = '✅ Разрешения предоставлены';
+                    log('✅ Разрешения предоставлены', 'success');
+                    break;
+                case 'denied':
+                    statusElement.className = 'status error';
+                    statusElement.textContent = '❌ Разрешения отклонены';
+                    log('❌ Разрешения отклонены', 'error');
+                    break;
+                case 'default':
+                    statusElement.className = 'status warning';
+                    statusElement.textContent = '⚠️ Разрешения не запрошены';
+                    log('⚠️ Разрешения не запрошены', 'warning');
+                    break;
+            }
+            
+            return permission;
+        }
+        
+        // Запрос разрешений
+        async function requestPermission() {
+            if (!checkSupport()) return;
+            
+            try {
+                const permission = await Notification.requestPermission();
+                log(`🔐 Запрошены разрешения: ${permission}`, 'info');
+                checkPermission();
+            } catch (error) {
+                log(`❌ Ошибка запроса разрешений: ${error.message}`, 'error');
+            }
+        }
+        
+        // Показать базовое уведомление
+        function testBasicNotification() {
+            if (Notification.permission !== 'granted') {
+                log('❌ Нет разрешений на уведомления', 'error');
+                return;
+            }
+            
+            const notification = new Notification('Тестовое уведомление', {
+                body: 'Это тестовое уведомление для проверки работы системы',
+                icon: './icons/icon-192x192.svg',
+                badge: './icons/icon-72x72.svg',
+                tag: 'test-notification'
+            });
+            
+            log('📨 Показано базовое уведомление', 'success');
+            
+            notification.onclick = () => {
+                log('👆 Клик по уведомлению', 'info');
+                notification.close();
+            };
+        }
+        
+        // Тест уведомления о выполнении задания
+        function testTaskCompletion() {
+            if (Notification.permission !== 'granted') {
+                log('❌ Нет разрешений на уведомления', 'error');
+                return;
+            }
+            
+            const notification = new Notification('Задание выполнено! 🎉', {
+                body: 'Изучение грамматики - получено 150 XP',
+                icon: './icons/icon-192x192.svg',
+                badge: './icons/icon-72x72.svg',
+                tag: 'task-completion'
+            });
+            
+            log('📨 Показано уведомление о выполнении задания', 'success');
+        }
+        
+        // Тест уведомления о повышении уровня
+        function testLevelUp() {
+            if (Notification.permission !== 'granted') {
+                log('❌ Нет разрешений на уведомления', 'error');
+                return;
+            }
+            
+            const notification = new Notification('Поздравляем!', {
+                body: '⭐ Новый уровень! Теперь вы 15 уровня',
+                icon: './icons/icon-192x192.svg',
+                badge: './icons/icon-72x72.svg',
+                tag: 'level-up'
+            });
+            
+            log('📨 Показано уведомление о повышении уровня', 'success');
+        }
+        
+        // Тест мотивационного уведомления
+        function testMotivational() {
+            if (Notification.permission !== 'granted') {
+                log('❌ Нет разрешений на уведомления', 'error');
+                return;
+            }
+            
+            const notification = new Notification('Время изучать английский! 🌟', {
+                body: 'Начните свой день с изучения новых слов или грамматики',
+                icon: './icons/icon-192x192.svg',
+                badge: './icons/icon-72x72.svg',
+                tag: 'motivational'
+            });
+            
+            log('📨 Показано мотивационное уведомление', 'success');
+        }
+        
+        // Тест запланированного уведомления
+        function testScheduled() {
+            if (Notification.permission !== 'granted') {
+                log('❌ Нет разрешений на уведомления', 'error');
+                return;
+            }
+            
+            // Планируем уведомление через 5 секунд
+            setTimeout(() => {
+                const notification = new Notification('Запланированное уведомление', {
+                    body: 'Это уведомление было запланировано на 5 секунд',
+                    icon: './icons/icon-192x192.svg',
+                    badge: './icons/icon-72x72.svg',
+                    tag: 'scheduled'
+                });
+                
+                log('📨 Показано запланированное уведомление', 'success');
+            }, 5000);
+            
+            log('⏰ Запланировано уведомление на 5 секунд', 'info');
+        }
+        
+        // Информация об устройстве
+        function updateDeviceInfo() {
+            const deviceInfo = document.getElementById('deviceInfo');
+            const userAgent = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+            const isAndroid = /Android/.test(userAgent);
+            const isMobile = /Mobi|Android/i.test(userAgent);
+            
+            deviceInfo.innerHTML = `
+                <strong>Браузер:</strong> ${navigator.userAgent}<br>
+                <strong>Платформа:</strong> ${navigator.platform}<br>
+                <strong>iOS:</strong> ${isIOS ? '✅' : '❌'}<br>
+                <strong>Android:</strong> ${isAndroid ? '✅' : '❌'}<br>
+                <strong>Мобильное:</strong> ${isMobile ? '✅' : '❌'}<br>
+                <strong>Service Worker:</strong> ${'serviceWorker' in navigator ? '✅' : '❌'}<br>
+                <strong>Notifications:</strong> ${'Notification' in window ? '✅' : '❌'}
+            `;
+        }
+        
+        // Тестовые настройки уведомлений
+        let testNotificationSettings = {
+            enableNotifications: true,
+            enableTaskNotifications: true,
+            enableLevelNotifications: true
+        };
+        
+        // Переключение тестовой настройки
+        function toggleTestSetting(setting, value) {
+            testNotificationSettings[setting] = value;
+            log(`⚙️ Настройка ${setting} изменена на: ${value}`, 'info');
+        }
+        
+        // Проверка, можно ли показывать тестовое уведомление
+        function canShowTestNotification(type = 'general') {
+            if (!testNotificationSettings.enableNotifications) {
+                return false;
+            }
+            
+            switch (type) {
+                case 'task':
+                    return testNotificationSettings.enableTaskNotifications;
+                case 'level':
+                    return testNotificationSettings.enableLevelNotifications;
+                default:
+                    return true;
+            }
+        }
+        
+        // Тест уведомлений с учетом настроек
+        function testWithSettings() {
+            log('🧪 Тестирование уведомлений с настройками...', 'info');
+            
+            // Тест базового уведомления
+            if (canShowTestNotification('general')) {
+                testBasicNotification();
+                log('✅ Базовое уведомление показано (настройки разрешают)', 'success');
+            } else {
+                log('❌ Базовое уведомление не показано (настройки запрещают)', 'warning');
+            }
+            
+            // Тест уведомления о задании
+            if (canShowTestNotification('task')) {
+                testTaskCompletion();
+                log('✅ Уведомление о задании показано (настройки разрешают)', 'success');
+            } else {
+                log('❌ Уведомление о задании не показано (настройки запрещают)', 'warning');
+            }
+            
+            // Тест уведомления о уровне
+            if (canShowTestNotification('level')) {
+                testLevelUp();
+                log('✅ Уведомление о уровне показано (настройки разрешают)', 'success');
+            } else {
+                log('❌ Уведомление о уровне не показано (настройки запрещают)', 'warning');
+            }
+        }
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDeviceInfo();
+            checkSupport();
+            checkPermission();
+            
+            // Устанавливаем начальные значения переключателей
+            document.getElementById('testEnableNotifications').checked = testNotificationSettings.enableNotifications;
+            document.getElementById('testEnableTaskNotifications').checked = testNotificationSettings.enableTaskNotifications;
+            document.getElementById('testEnableLevelNotifications').checked = testNotificationSettings.enableLevelNotifications;
+            
+            log('🚀 Тест уведомлений запущен', 'info');
+        });
+    </script>
+</body>
+</html>

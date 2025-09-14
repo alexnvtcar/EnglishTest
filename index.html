@@ -93,6 +93,10 @@
                         📱
                         Установить приложение
                     </div>
+                    <div class="settings-item" onclick="toggleNotificationSettings()" id="notificationMenuItem">
+                        🔔
+                        <span id="notificationStatus">Настройки уведомлений</span>
+                    </div>
                     </div>
                 </div>
                 
@@ -1367,6 +1371,112 @@
                         <h4>💡 Рекомендуемый тест:</h4>
                         <div id="recommendedTest"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно настроек уведомлений -->
+        <div class="modal-overlay" id="notificationSettingsModal" style="display: none;">
+            <div class="modal-content" style="position: relative; max-width: 500px;" role="dialog" aria-modal="true" aria-labelledby="notificationSettingsTitle">
+                <div class="modal-header">
+                    <h3 id="notificationSettingsTitle">🔔 Настройки уведомлений</h3>
+                    <button class="modal-close" onclick="hideNotificationSettings()" aria-label="Закрыть">
+                        ✕
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="notification-settings-section">
+                        <h4>📱 Разрешения браузера</h4>
+                        <div class="notification-permission-status" id="notificationPermissionStatus">
+                            Проверка статуса разрешений...
+                        </div>
+                        <button class="btn btn-primary" onclick="requestNotificationPermission()" id="requestPermissionBtn">
+                            Запросить разрешения
+                        </button>
+                    </div>
+                    
+                    <hr class="settings-divider">
+                    
+                    <div class="notification-settings-section">
+                        <h4>⚙️ Настройки уведомлений</h4>
+                        
+                        <div class="notification-setting-item">
+                            <label class="notification-toggle">
+                                <input type="checkbox" id="enableNotifications" onchange="toggleNotificationSetting('enableNotifications', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Включить уведомления</span>
+                            </label>
+                        </div>
+                        
+                        <div class="notification-setting-item">
+                            <label class="notification-toggle">
+                                <input type="checkbox" id="enableTaskNotifications" onchange="toggleNotificationSetting('enableTaskNotifications', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Уведомления о выполнении заданий</span>
+                            </label>
+                        </div>
+                        
+                        <div class="notification-setting-item">
+                            <label class="notification-toggle">
+                                <input type="checkbox" id="enableLevelNotifications" onchange="toggleNotificationSetting('enableLevelNotifications', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Уведомления о повышении уровня</span>
+                            </label>
+                        </div>
+                        
+                        <div class="notification-setting-item">
+                            <label class="notification-toggle">
+                                <input type="checkbox" id="enableMotivationalNotifications" onchange="toggleNotificationSetting('enableMotivationalNotifications', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Мотивационные напоминания</span>
+                            </label>
+                        </div>
+                        
+                        <div class="notification-setting-item">
+                            <label class="notification-toggle">
+                                <input type="checkbox" id="enableAchievementNotifications" onchange="toggleNotificationSetting('enableAchievementNotifications', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Уведомления о достижениях</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <hr class="settings-divider">
+                    
+                    <div class="notification-settings-section">
+                        <h4>🕐 Время напоминаний</h4>
+                        <div class="time-settings">
+                            <div class="time-setting-item">
+                                <label for="morningReminderTime">Утреннее напоминание:</label>
+                                <input type="time" id="morningReminderTime" value="09:00" onchange="updateReminderTime('morning', this.value)">
+                            </div>
+                            <div class="time-setting-item">
+                                <label for="afternoonReminderTime">Дневное напоминание:</label>
+                                <input type="time" id="afternoonReminderTime" value="15:00" onchange="updateReminderTime('afternoon', this.value)">
+                            </div>
+                            <div class="time-setting-item">
+                                <label for="eveningReminderTime">Вечернее напоминание:</label>
+                                <input type="time" id="eveningReminderTime" value="20:00" onchange="updateReminderTime('evening', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="settings-divider">
+                    
+                    <div class="notification-settings-section">
+                        <h4>🧪 Тестирование</h4>
+                        <div class="test-buttons">
+                            <button class="btn btn-secondary" onclick="testNotification('basic')">Тест базового уведомления</button>
+                            <button class="btn btn-secondary" onclick="testNotification('task')">Тест задания</button>
+                            <button class="btn btn-secondary" onclick="testNotification('level')">Тест уровня</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="saveNotificationSettings()">Сохранить настройки</button>
+                    <button class="btn btn-secondary" onclick="hideNotificationSettings()">Отмена</button>
                 </div>
             </div>
         </div>

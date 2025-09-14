@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Тест уведомлений для iOS</title>
+    
+    <!-- iOS PWA мета-теги -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Notification Test">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- Стили -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="animations-fix.css">
+    <link rel="stylesheet" href="z-index-fix.css">
+    
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .test-header {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .test-button:active {
+            transform: translateY(0);
+        }
+        
+        .device-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .timing-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .timing-info h3 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+        
+        .timing-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .test-results {
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .test-log {
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .test-log .success { color: #059669; }
+        .test-log .error { color: #dc2626; }
+        .test-log .warning { color: #d97706; }
+        .test-log .info { color: #2563eb; }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: #10b981;
+        }
+        
+        .notification.error {
+            background: #ef4444;
+        }
+        
+        .notification.warning {
+            background: #f59e0b;
+        }
+        
+        .notification.info {
+            background: #3b82f6;
+        }
+        
+        @media (max-width: 768px) {
+            .test-container {
+                padding: 10px;
+            }
+            
+            .notification {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔔 Тест уведомлений для iOS</h1>
+            <p>Проверка времени отображения уведомлений на iPhone и iPad</p>
+        </div>
+        
+        <div class="device-info">
+            <h3>📱 Информация об устройстве</h3>
+            <div id="deviceInfo"></div>
+        </div>
+        
+        <div class="timing-info">
+            <h3>⏱️ Время отображения уведомлений</h3>
+            <p><strong>iPhone/iPad:</strong> 1 секунда для "Задание выполнено" и "Данные сохранены"</p>
+            <p><strong>iPhone/iPad:</strong> 0.8 секунды для мгновенных уведомлений</p>
+            <p><strong>Другие устройства:</strong> 3 секунды (стандартное время)</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Тестовые уведомления</h2>
+            <p>Нажмите на кнопки ниже, чтобы протестировать различные типы уведомлений:</p>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button class="test-button" onclick="testTaskCompletion()">
+                    ✅ Задание выполнено
+                </button>
+                
+                <button class="test-button" onclick="testDataSaved()">
+                    💾 Данные сохранены
+                </button>
+                
+                <button class="test-button" onclick="testInstantNotification()">
+                    ⚡ Мгновенное уведомление
+                </button>
+                
+                <button class="test-button" onclick="testQuickNotification()">
+                    🚀 Быстрое уведомление
+                </button>
+                
+                <button class="test-button" onclick="testNormalNotification()">
+                    📢 Обычное уведомление
+                </button>
+                
+                <button class="test-button" onclick="testMultipleNotifications()">
+                    🔄 Несколько уведомлений
+                </button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Результаты тестирования</h2>
+            <div class="test-results">
+                <h4>Лог тестов:</h4>
+                <div class="test-log" id="testLog"></div>
+            </div>
+            <button class="test-button" onclick="clearLog()" style="margin-top: 10px;">Очистить лог</button>
+        </div>
+    </div>
+
+    <!-- Уведомление -->
+    <div class="notification" id="notification">
+        <span id="notificationMessage"></span>
+    </div>
+
+    <script>
+        // Глобальные переменные для тестирования
+        let testStartTime = 0;
+        let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDeviceInfo();
+            log('🚀 Тест уведомлений для iOS инициализирован', 'info');
+            log(`Устройство: ${isIOS ? 'iOS (iPhone/iPad)' : 'Другое устройство'}`, 'info');
+        });
+        
+        // Обновление информации об устройстве
+        function updateDeviceInfo() {
+            const deviceInfo = document.getElementById('deviceInfo');
+            const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+            const isTablet = /iPad|Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
+            
+            deviceInfo.innerHTML = `
+                <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                <p><strong>Платформа:</strong> ${navigator.platform}</p>
+                <p><strong>Разрешение:</strong> ${screen.width}x${screen.height}</p>
+                <p><strong>Viewport:</strong> ${window.innerWidth}x${window.innerHeight}</p>
+                <p><strong>Тип устройства:</strong> ${isTablet ? 'Планшет' : isMobile ? 'Мобильное' : 'Десктоп'}</p>
+                <p><strong>iOS устройство:</strong> ${isIOS ? 'Да' : 'Нет'}</p>
+                <p><strong>Touch поддержка:</strong> ${('ontouchstart' in window) ? 'Да' : 'Нет'}</p>
+            `;
+        }
+        
+        // Система логирования
+        function log(message, type = 'info') {
+            const testLog = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            testLog.appendChild(logEntry);
+            testLog.scrollTop = testLog.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        // Функция показа уведомления (копия из основного приложения)
+        function showNotification(message, type = "success") {
+            const notification = document.getElementById("notification");
+            const messageEl = document.getElementById("notificationMessage");
+
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+            if (notification) {
+                notification.className = `notification ${type} show`;
+            }
+
+            // Определяем время отображения в зависимости от устройства и типа уведомления
+            const isTaskCompletion = message.includes('Задание выполнено');
+            const isDataSaved = message.includes('сохранен') || message.includes('сохранены');
+            
+            let displayTime = 3000; // По умолчанию 3 секунды
+            
+            if (isIOS) {
+                if (isTaskCompletion || isDataSaved) {
+                    displayTime = 1000; // 1 секунда для iPhone/iPad
+                } else {
+                    displayTime = 2000; // 2 секунды для других уведомлений
+                }
+            }
+
+            setTimeout(() => {
+                if (notification) {
+                    notification.classList.remove("show");
+                }
+            }, displayTime);
+        }
+        
+        // Функция быстрых уведомлений
+        function showQuickNotification(message, type = "success") {
+            if (isIOS) {
+                showNotification(message, type);
+            } else {
+                showNotification(message, type);
+            }
+        }
+        
+        // Функция мгновенных уведомлений
+        function showInstantNotification(message, type = "success") {
+            const notification = document.getElementById("notification");
+            const messageEl = document.getElementById("notificationMessage");
+
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+            if (notification) {
+                notification.className = `notification ${type} show`;
+            }
+
+            const displayTime = isIOS ? 800 : 3000; // 0.8 секунды для iOS, 3 для других
+
+            setTimeout(() => {
+                if (notification) {
+                    notification.classList.remove("show");
+                }
+            }, displayTime);
+        }
+        
+        // Тестовые функции
+        function testTaskCompletion() {
+            testStartTime = Date.now();
+            log('🧪 Тестирование: "Задание выполнено"', 'info');
+            showNotification('Задание выполнено сегодня! +50 XP', 'success');
+            log(`Ожидаемое время отображения: ${isIOS ? '1 секунда' : '3 секунды'}`, 'info');
+        }
+        
+        function testDataSaved() {
+            testStartTime = Date.now();
+            log('🧪 Тестирование: "Данные сохранены"', 'info');
+            showNotification('Данные сохранены в Firebase', 'success');
+            log(`Ожидаемое время отображения: ${isIOS ? '1 секунда' : '3 секунды'}`, 'info');
+        }
+        
+        function testInstantNotification() {
+            testStartTime = Date.now();
+            log('🧪 Тестирование: Мгновенное уведомление', 'info');
+            showInstantNotification('Мгновенное уведомление!', 'info');
+            log(`Ожидаемое время отображения: ${isIOS ? '0.8 секунды' : '3 секунды'}`, 'info');
+        }
+        
+        function testQuickNotification() {
+            testStartTime = Date.now();
+            log('🧪 Тестирование: Быстрое уведомление', 'info');
+            showQuickNotification('Быстрое уведомление!', 'warning');
+            log(`Ожидаемое время отображения: ${isIOS ? '1 секунда' : '3 секунды'}`, 'info');
+        }
+        
+        function testNormalNotification() {
+            testStartTime = Date.now();
+            log('🧪 Тестирование: Обычное уведомление', 'info');
+            showNotification('Обычное уведомление', 'info');
+            log(`Ожидаемое время отображения: ${isIOS ? '2 секунды' : '3 секунды'}`, 'info');
+        }
+        
+        function testMultipleNotifications() {
+            log('🧪 Тестирование: Несколько уведомлений подряд', 'info');
+            
+            setTimeout(() => {
+                showNotification('Первое уведомление', 'success');
+                log('Показано первое уведомление', 'info');
+            }, 100);
+            
+            setTimeout(() => {
+                showNotification('Второе уведомление', 'warning');
+                log('Показано второе уведомление', 'info');
+            }, 200);
+            
+            setTimeout(() => {
+                showNotification('Третье уведомление', 'error');
+                log('Показано третье уведомление', 'info');
+            }, 300);
+        }
+        
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+            log('🧹 Лог очищен', 'info');
+        }
+        
+        // Автоматическое тестирование при загрузке
+        setTimeout(() => {
+            if (isIOS) {
+                log('🍎 Автоматический тест для iOS устройства', 'info');
+                log('Запускаем тест через 2 секунды...', 'info');
+                
+                setTimeout(() => {
+                    testTaskCompletion();
+                }, 2000);
+                
+                setTimeout(() => {
+                    testDataSaved();
+                }, 4000);
+                
+                setTimeout(() => {
+                    testInstantNotification();
+                }, 6000);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="pageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f1f5f9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="starGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="trophyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    </linearGradient>
+    <filter id="bookShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"/>
+      <feOffset dx="0" dy="2" result="offset"/>
+      <feFlood flood-color="#000000" flood-opacity="0.15"/>
+      <feComposite in2="offset" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="elementShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5"/>
+      <feOffset dx="0" dy="1" result="offset"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offset" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="highlight" cx="30%" cy="30%" r="40%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="128" height="128" rx="24" fill="url(#bgGradient)"/>
+  <rect width="128" height="128" rx="24" fill="url(#highlight)"/>
+  
+  <g filter="url(#bookShadow)">
+    <rect x="29" y="21" width="70" height="86" rx="6" fill="url(#bookGradient)"/>
+  </g>
+  
+  <rect x="35" y="27" width="58" height="74" rx="3" fill="url(#pageGradient)"/>
+  
+  <g fill="#1e293b" opacity="0.8">
+    <rect x="42" y="35" width="44" height="3" rx="1.5" fill="#1e40af"/>
+    <rect x="42" y="40" width="38" height="2" rx="1" fill="#64748b"/>
+    <rect x="42" y="45" width="40" height="2" rx="1" fill="#64748b"/>
+    <rect x="42" y="50" width="36" height="2" rx="1" fill="#64748b"/>
+    
+    <rect x="42" y="55" width="44" height="3" rx="1.5" fill="#1e40af"/>
+    <rect x="42" y="60" width="38" height="2" rx="1" fill="#64748b"/>
+    <rect x="42" y="65" width="40" height="2" rx="1" fill="#64748b"/>
+    <rect x="42" y="70" width="36" height="2" rx="1" fill="#64748b"/>
+    
+    <rect x="42" y="75" width="40" height="3" rx="1.5" fill="#1e40af"/>
+    <rect x="42" y="80" width="36" height="2" rx="1" fill="#64748b"/>
+  </g>
+  
+  <g transform="translate(78, 42)" filter="url(#elementShadow)">
+    <path d="M7 0L8 4L12 4L9 6L10 10L7 8L4 10L5 6L2 4L6 4Z" fill="url(#starGradient)"/>
+    <path d="M6 2L7 4L8 2L7 3Z" fill="#ffffff" opacity="0.6"/>
+  </g>
+  
+  <g transform="translate(42, 88)" filter="url(#elementShadow)">
+    <path d="M6 0L6 1L7 1L7 2L6 2L6 3L5 3L5 2L6 2L6 1Z" fill="url(#trophyGradient)"/>
+    <path d="M5 1L6 1L7 1L6 1Z" fill="#ffffff" opacity="0.6"/>
+  </g>
+  
+  <g opacity="0.3">
+    <circle cx="21" cy="35" r="1" fill="#ffffff"/>
+    <circle cx="103" cy="50" r="1" fill="#ffffff"/>
+    <circle cx="27" cy="88" r="1" fill="#ffffff"/>
+    <circle cx="98" cy="95" r="1" fill="#ffffff"/>
+  </g>
+</svg>

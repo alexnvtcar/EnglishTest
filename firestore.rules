@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Правила для пользовательских данных
+    match /users/{userId} {
+      // Пользователь может читать и писать только свои данные
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Правила для данных приложения
+    match /appData/{document} {
+      // Только аутентифицированные пользователи
+      allow read, write: if request.auth != null;
+    }
+    
+    // Правила для PIN-кодов (только чтение для аутентифицированных пользователей)
+    match /pinCodes/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Запретить доступ ко всем остальным документам
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

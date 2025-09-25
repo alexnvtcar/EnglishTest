@@ -560,6 +560,12 @@ async function loadStateFromFirestore() {
         console.log('Firebase недоступен, загружаем только локально');
         return false;
     }
+    
+    // Проверяем аутентификацию
+    if (!window.isAuthenticated || !window.isAuthenticated()) {
+        console.log('🔐 Пользователь не аутентифицирован, загружаем только локально');
+        return false;
+    }
 
     try {
         console.log('📥 Начинаем загрузку из Firebase...');
@@ -2335,6 +2341,12 @@ function executeTaskCompletion(task, customXP, customTime, completionDate = new 
         
         // Achievement checks removed
         
+        // Показываем уведомление о выполнении задания
+        showBrowserNotificationWithSettings('Задание выполнено! 🎉', {
+            body: `${task.name} - получено ${customXP} XP`,
+            icon: './icons/icon-192x192.svg'
+        }, 'task');
+        
         // 1. Пересчитываем лучшую неделю
         recalculateBestWeek();
         
@@ -3279,6 +3291,9 @@ function initApp() {
     // Устанавливаем базовые значения по умолчанию
     ensureWeeklyReset();
     
+    // Инициализируем систему уведомлений
+    initializeNotifications();
+    
     console.log('🔄 Инициализация приложения, пересчитываем все показатели...');
     
     // ПОЛНЫЙ ПЕРЕСЧЕТ ВСЕХ ПОКАЗАТЕЛЕЙ ПРИ ИНИЦИАЛИЗАЦИИ
@@ -3767,13 +3782,20 @@ function recalculateAllProgress() {
     
     // Calculate level from total XP (810 XP per level)
     const xpPerLevel = 810;
-    appState.progress.level = Math.min(100, Math.floor(totalXP / xpPerLevel) + 1);
+    const newLevel = Math.min(100, Math.floor(totalXP / xpPerLevel) + 1);
+    const oldLevel = appState.progress.level;
+    appState.progress.level = newLevel;
     appState.progress.currentLevelXP = totalXP % xpPerLevel;
     
     // If at max level, set currentLevelXP to 0
     if (appState.progress.level >= 100) {
         appState.progress.level = 100;
         appState.progress.currentLevelXP = 0;
+    }
+    
+    // Проверяем повышение уровня и показываем уведомление
+    if (newLevel > oldLevel && oldLevel > 0) {
+        notifyGoalAchievementWithSettings('level', newLevel);
     }
 
     // Calculate current week progress
@@ -6765,15 +6787,28 @@ async function saveStateToFirestore(showDetails = false) {
         return false;
     }
     
+    // Проверяем аутентификацию
+    if (!window.isAuthenticated || !window.isAuthenticated()) {
+        console.log('🔐 Пользователь не аутентифицирован, сохраняем только локально');
+        if (showDetails) {
+            showNotification('Требуется аутентификация для сохранения в Firebase', 'warning');
+        }
+        return false;
+    }
+    
     if (!isFirebaseAvailable()) {
         console.log('Firebase недоступен, сохраняем только локально');
-        showNotification('Firebase недоступен', 'warning');
+        if (showDetails) {
+            showNotification('Firebase недоступен', 'warning');
+        }
         return false;
     }
 
     if (!navigator.onLine) {
         console.log('Нет интернет-соединения');
-        showNotification('Нет интернет-соединения', 'warning');
+        if (showDetails) {
+            showNotification('Нет интернет-соединения', 'warning');
+        }
         return false;
     }
 
@@ -7120,6 +7155,12 @@ function restoreDataTypes(data) {
 async function loadStateFromFirestore() {
     if (!isFirebaseAvailable()) {
         console.log('Firebase недоступен, загружаем только локально');
+        return false;
+    }
+    
+    // Проверяем аутентификацию
+    if (!window.isAuthenticated || !window.isAuthenticated()) {
+        console.log('🔐 Пользователь не аутентифицирован, загружаем только локально');
         return false;
     }
 
@@ -10207,5 +10248,568 @@ if (typeof window !== 'undefined') {
     window.showTechDiagnosticsBlock = showTechDiagnosticsBlock;
     console.log('🧪 Test functions registered globally');
 }
+
+// ==================== СИСТЕМА УВЕДОМЛЕНИЙ ====================
+
+// Проверка поддержки уведомлений
+function isNotificationSupported() {
+    return 'Notification' in window && 'serviceWorker' in navigator;
+}
+
+// Проверка статуса разрешений на уведомления
+function getNotificationPermission() {
+    if (!isNotificationSupported()) {
+        return 'unsupported';
+    }
+    return Notification.permission;
+}
+
+// Запрос разрешений на уведомления
+async function requestNotificationPermission() {
+    if (!isNotificationSupported()) {
+        showNotification('Уведомления не поддерживаются в этом браузере', 'warning');
+        updateNotificationStatus('unsupported');
+        return false;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            showNotification('Разрешение на уведомления получено!', 'success');
+            
+            // Регистрируем подписку на push уведомления
+            await subscribeToPushNotifications();
+            
+            // Планируем мотивационные уведомления с учетом настроек
+            scheduleMotivationalNotificationsWithSettings();
+            
+            updateNotificationStatus('granted');
+            return true;
+        } else if (permission === 'denied') {
+            showNotification('Разрешение на уведомления отклонено', 'warning');
+            updateNotificationStatus('denied');
+            return false;
+        } else {
+            showNotification('Разрешение на уведомления не предоставлено', 'info');
+            updateNotificationStatus('default');
+            return false;
+        }
+    } catch (error) {
+        console.error('Ошибка запроса разрешений на уведомления:', error);
+        showNotification('Ошибка при запросе разрешений на уведомления', 'error');
+        updateNotificationStatus('denied');
+        return false;
+    }
+}
+
+// Подписка на push уведомления
+async function subscribeToPushNotifications() {
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Проверяем поддержку push manager
+        if (!registration.pushManager) {
+            console.log('Push Manager не поддерживается');
+            return false;
+        }
+
+        // Проверяем существующую подписку
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+            // Создаем новую подписку
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(
+                    'BEl62iUYgUivxIkv69yViEuiBIa40HI0Qy_3VQFuBcXKqXJHyXwpA8k5c0QHPHQ8vLQc4RuoLz1sc4h4HyX4Xc'
+                )
+            });
+        }
+
+        console.log('✅ Подписка на push уведомления создана:', subscription);
+        return subscription;
+    } catch (error) {
+        console.error('Ошибка подписки на push уведомления:', error);
+        return false;
+    }
+}
+
+// Конвертация ключа для push уведомлений
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Показать браузерное уведомление
+async function showBrowserNotification(title, options = {}) {
+    if (!isNotificationSupported()) {
+        showNotification('Уведомления не поддерживаются', 'warning');
+        return false;
+    }
+
+    if (Notification.permission !== 'granted') {
+        showNotification('Разрешение на уведомления не предоставлено', 'warning');
+        return false;
+    }
+
+    try {
+        const notification = new Notification(title, {
+            icon: './icons/icon-192x192.svg',
+            badge: './icons/icon-72x72.svg',
+            tag: 'english-learning',
+            requireInteraction: false,
+            silent: false,
+            ...options
+        });
+
+        // Автоматически закрываем уведомление через 5 секунд
+        setTimeout(() => {
+            notification.close();
+        }, 5000);
+
+        return notification;
+    } catch (error) {
+        console.error('Ошибка показа уведомления:', error);
+        showNotification('Ошибка показа уведомления', 'error');
+        return false;
+    }
+}
+
+// Запланированные уведомления для мотивации
+function scheduleMotivationalNotifications() {
+    // Уведомление о начале дня
+    scheduleNotification('Время изучать английский! 🌟', {
+        body: 'Начните свой день с изучения новых слов или грамматики',
+        icon: './icons/icon-192x192.svg'
+    }, 9, 0); // 9:00
+
+    // Уведомление в середине дня
+    scheduleNotification('Не забывайте про английский! 📚', {
+        body: 'Потратьте 15 минут на изучение английского языка',
+        icon: './icons/icon-192x192.svg'
+    }, 15, 0); // 15:00
+
+    // Уведомление вечером
+    scheduleNotification('Завершите день изучением! 🌙', {
+        body: 'Выполните задание и получите XP перед сном',
+        icon: './icons/icon-192x192.svg'
+    }, 20, 0); // 20:00
+}
+
+// Планирование уведомления на определенное время
+function scheduleNotification(title, options, hour, minute) {
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(hour, minute, 0, 0);
+
+    // Если время уже прошло сегодня, планируем на завтра
+    if (scheduledTime <= now) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+
+    const timeUntilNotification = scheduledTime.getTime() - now.getTime();
+
+    setTimeout(() => {
+        showBrowserNotification(title, options);
+    }, timeUntilNotification);
+
+    console.log(`📅 Уведомление запланировано на ${scheduledTime.toLocaleString()}`);
+}
+
+// Уведомление о достижении цели
+function notifyGoalAchievement(goalType, value) {
+    const messages = {
+        daily: `🎯 Дневная цель достигнута! Получено ${value} XP`,
+        weekly: `🏆 Недельная цель достигнута! Получено ${value} XP`,
+        level: `⭐ Новый уровень! Теперь вы ${value} уровня`,
+        streak: `🔥 Серия ${value} дней подряд! Продолжайте в том же духе!`
+    };
+
+    const message = messages[goalType] || `🎉 Цель достигнута: ${value}`;
+    
+    showBrowserNotification('Поздравляем!', {
+        body: message,
+        icon: './icons/icon-192x192.svg',
+        badge: './icons/icon-72x72.svg'
+    });
+}
+
+// Уведомление о напоминании
+function notifyReminder(message, delay = 0) {
+    setTimeout(() => {
+        showBrowserNotification('Напоминание', {
+            body: message,
+            icon: './icons/icon-192x192.svg'
+        });
+    }, delay);
+}
+
+// Проверка и настройка уведомлений при запуске
+async function initializeNotifications() {
+    console.log('🔔 Инициализация системы уведомлений...');
+    
+    // Загружаем настройки уведомлений
+    loadNotificationSettings();
+    
+    if (!isNotificationSupported()) {
+        console.log('❌ Уведомления не поддерживаются');
+        updateNotificationStatus('unsupported');
+        return false;
+    }
+
+    const permission = getNotificationPermission();
+    console.log(`📱 Статус разрешений: ${permission}`);
+
+    if (permission === 'granted') {
+        // Если разрешения уже есть, подписываемся на push
+        await subscribeToPushNotifications();
+        
+        // Планируем мотивационные уведомления с учетом настроек
+        scheduleMotivationalNotificationsWithSettings();
+        
+        updateNotificationStatus('granted');
+        console.log('✅ Система уведомлений инициализирована');
+        return true;
+    } else if (permission === 'default') {
+        // Показываем кнопку для запроса разрешений
+        updateNotificationStatus('default');
+        showNotification('Нажмите на колокольчик в настройках для включения уведомлений', 'info');
+        return false;
+    } else {
+        console.log('❌ Разрешения на уведомления отклонены');
+        updateNotificationStatus('denied');
+        return false;
+    }
+}
+
+// Обновление статуса уведомлений в UI
+function updateNotificationStatus(permission) {
+    const statusElement = document.getElementById('notificationStatus');
+    const menuItem = document.getElementById('notificationMenuItem');
+    
+    if (!statusElement || !menuItem) return;
+    
+    switch (permission) {
+        case 'granted':
+            statusElement.textContent = 'Уведомления включены';
+            menuItem.style.color = '#4CAF50';
+            break;
+        case 'denied':
+            statusElement.textContent = 'Уведомления отключены';
+            menuItem.style.color = '#f44336';
+            break;
+        case 'default':
+            statusElement.textContent = 'Включить уведомления';
+            menuItem.style.color = '#ff9800';
+            break;
+        case 'unsupported':
+            statusElement.textContent = 'Не поддерживается';
+            menuItem.style.color = '#9e9e9e';
+            break;
+    }
+}
+
+// Экспорт функций для глобального использования
+window.requestNotificationPermission = requestNotificationPermission;
+window.showBrowserNotification = showBrowserNotification;
+window.notifyGoalAchievement = notifyGoalAchievement;
+window.notifyReminder = notifyReminder;
+window.initializeNotifications = initializeNotifications;
+window.isNotificationSupported = isNotificationSupported;
+window.getNotificationPermission = getNotificationPermission;
+window.updateNotificationStatus = updateNotificationStatus;
+
+console.log('🔔 Notification functions registered globally');
+
+// ==================== УПРАВЛЕНИЕ НАСТРОЙКАМИ УВЕДОМЛЕНИЙ ====================
+
+// Объект настроек уведомлений
+let notificationSettings = {
+    enableNotifications: true,
+    enableTaskNotifications: true,
+    enableLevelNotifications: true,
+    enableMotivationalNotifications: true,
+    enableAchievementNotifications: true,
+    reminderTimes: {
+        morning: '09:00',
+        afternoon: '15:00',
+        evening: '20:00'
+    }
+};
+
+// Загрузка настроек уведомлений из localStorage
+function loadNotificationSettings() {
+    try {
+        const saved = localStorage.getItem('notificationSettings');
+        if (saved) {
+            notificationSettings = { ...notificationSettings, ...JSON.parse(saved) };
+            console.log('🔔 Настройки уведомлений загружены:', notificationSettings);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки настроек уведомлений:', error);
+    }
+}
+
+// Сохранение настроек уведомлений в localStorage
+function saveNotificationSettingsToStorage() {
+    try {
+        localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+        console.log('🔔 Настройки уведомлений сохранены:', notificationSettings);
+    } catch (error) {
+        console.error('Ошибка сохранения настроек уведомлений:', error);
+    }
+}
+
+// Показать модальное окно настроек уведомлений
+function toggleNotificationSettings() {
+    const modal = document.getElementById('notificationSettingsModal');
+    if (!modal) return;
+    
+    // Загружаем текущие настройки
+    loadNotificationSettings();
+    
+    // Обновляем UI с текущими настройками
+    updateNotificationSettingsUI();
+    
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+    
+    // Обновляем статус разрешений
+    updateNotificationPermissionStatus();
+}
+
+// Скрыть модальное окно настроек уведомлений
+function hideNotificationSettings() {
+    const modal = document.getElementById('notificationSettingsModal');
+    if (!modal) return;
+    
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+}
+
+// Обновление UI настроек уведомлений
+function updateNotificationSettingsUI() {
+    // Обновляем переключатели
+    document.getElementById('enableNotifications').checked = notificationSettings.enableNotifications;
+    document.getElementById('enableTaskNotifications').checked = notificationSettings.enableTaskNotifications;
+    document.getElementById('enableLevelNotifications').checked = notificationSettings.enableLevelNotifications;
+    document.getElementById('enableMotivationalNotifications').checked = notificationSettings.enableMotivationalNotifications;
+    document.getElementById('enableAchievementNotifications').checked = notificationSettings.enableAchievementNotifications;
+    
+    // Обновляем время напоминаний
+    document.getElementById('morningReminderTime').value = notificationSettings.reminderTimes.morning;
+    document.getElementById('afternoonReminderTime').value = notificationSettings.reminderTimes.afternoon;
+    document.getElementById('eveningReminderTime').value = notificationSettings.reminderTimes.evening;
+}
+
+// Обновление статуса разрешений в UI
+function updateNotificationPermissionStatus() {
+    const statusElement = document.getElementById('notificationPermissionStatus');
+    const requestBtn = document.getElementById('requestPermissionBtn');
+    
+    if (!statusElement || !requestBtn) return;
+    
+    const permission = getNotificationPermission();
+    
+    switch (permission) {
+        case 'granted':
+            statusElement.className = 'notification-permission-status granted';
+            statusElement.textContent = '✅ Разрешения предоставлены';
+            requestBtn.textContent = 'Обновить разрешения';
+            requestBtn.disabled = false;
+            break;
+        case 'denied':
+            statusElement.className = 'notification-permission-status denied';
+            statusElement.textContent = '❌ Разрешения отклонены';
+            requestBtn.textContent = 'Разрешения отклонены';
+            requestBtn.disabled = true;
+            break;
+        case 'default':
+            statusElement.className = 'notification-permission-status default';
+            statusElement.textContent = '⚠️ Разрешения не запрошены';
+            requestBtn.textContent = 'Запросить разрешения';
+            requestBtn.disabled = false;
+            break;
+        case 'unsupported':
+            statusElement.className = 'notification-permission-status unsupported';
+            statusElement.textContent = '❌ Уведомления не поддерживаются';
+            requestBtn.textContent = 'Не поддерживается';
+            requestBtn.disabled = true;
+            break;
+    }
+}
+
+// Переключение настройки уведомления
+function toggleNotificationSetting(setting, value) {
+    notificationSettings[setting] = value;
+    console.log(`🔔 Настройка ${setting} изменена на:`, value);
+    
+    // Если отключили основные уведомления, отключаем все остальные
+    if (setting === 'enableNotifications' && !value) {
+        notificationSettings.enableTaskNotifications = false;
+        notificationSettings.enableLevelNotifications = false;
+        notificationSettings.enableMotivationalNotifications = false;
+        notificationSettings.enableAchievementNotifications = false;
+        updateNotificationSettingsUI();
+    }
+    
+    // Если включили основные уведомления, включаем остальные по умолчанию
+    if (setting === 'enableNotifications' && value) {
+        notificationSettings.enableTaskNotifications = true;
+        notificationSettings.enableLevelNotifications = true;
+        notificationSettings.enableMotivationalNotifications = true;
+        notificationSettings.enableAchievementNotifications = true;
+        updateNotificationSettingsUI();
+    }
+}
+
+// Обновление времени напоминания
+function updateReminderTime(type, time) {
+    notificationSettings.reminderTimes[type] = time;
+    console.log(`🔔 Время ${type} напоминания изменено на:`, time);
+}
+
+// Сохранение настроек уведомлений
+function saveNotificationSettings() {
+    saveNotificationSettingsToStorage();
+    
+    // Перепланируем мотивационные уведомления с новыми настройками
+    if (notificationSettings.enableNotifications && notificationSettings.enableMotivationalNotifications) {
+        scheduleMotivationalNotifications();
+    }
+    
+    showNotification('Настройки уведомлений сохранены', 'success');
+    hideNotificationSettings();
+}
+
+// Проверка, можно ли показывать уведомления
+function canShowNotification(type = 'general') {
+    // Проверяем разрешения браузера
+    if (!isNotificationSupported() || Notification.permission !== 'granted') {
+        return false;
+    }
+    
+    // Проверяем общие настройки
+    if (!notificationSettings.enableNotifications) {
+        return false;
+    }
+    
+    // Проверяем конкретный тип уведомления
+    switch (type) {
+        case 'task':
+            return notificationSettings.enableTaskNotifications;
+        case 'level':
+            return notificationSettings.enableLevelNotifications;
+        case 'motivational':
+            return notificationSettings.enableMotivationalNotifications;
+        case 'achievement':
+            return notificationSettings.enableAchievementNotifications;
+        default:
+            return true;
+    }
+}
+
+// Обновленная функция показа браузерного уведомления с проверкой настроек
+async function showBrowserNotificationWithSettings(title, options = {}, type = 'general') {
+    if (!canShowNotification(type)) {
+        console.log(`🔔 Уведомление типа ${type} отключено в настройках`);
+        return false;
+    }
+    
+    return await showBrowserNotification(title, options);
+}
+
+// Обновленная функция уведомления о достижении цели
+function notifyGoalAchievementWithSettings(goalType, value) {
+    if (!canShowNotification('achievement')) {
+        console.log('🔔 Уведомления о достижениях отключены');
+        return;
+    }
+    
+    notifyGoalAchievement(goalType, value);
+}
+
+// Обновленная функция запланированных уведомлений
+function scheduleMotivationalNotificationsWithSettings() {
+    if (!canShowNotification('motivational')) {
+        console.log('🔔 Мотивационные уведомления отключены');
+        return;
+    }
+    
+    const times = notificationSettings.reminderTimes;
+    
+    // Утреннее напоминание
+    const morningTime = times.morning.split(':');
+    scheduleNotification('Время изучать английский! 🌟', {
+        body: 'Начните свой день с изучения новых слов или грамматики',
+        icon: './icons/icon-192x192.svg'
+    }, parseInt(morningTime[0]), parseInt(morningTime[1]));
+    
+    // Дневное напоминание
+    const afternoonTime = times.afternoon.split(':');
+    scheduleNotification('Не забывайте про английский! 📚', {
+        body: 'Потратьте 15 минут на изучение английского языка',
+        icon: './icons/icon-192x192.svg'
+    }, parseInt(afternoonTime[0]), parseInt(afternoonTime[1]));
+    
+    // Вечернее напоминание
+    const eveningTime = times.evening.split(':');
+    scheduleNotification('Завершите день изучением! 🌙', {
+        body: 'Выполните задание и получите XP перед сном',
+        icon: './icons/icon-192x192.svg'
+    }, parseInt(eveningTime[0]), parseInt(eveningTime[1]));
+}
+
+// Тестирование уведомлений
+function testNotification(type) {
+    if (!canShowNotification(type)) {
+        showNotification('Этот тип уведомлений отключен в настройках', 'warning');
+        return;
+    }
+    
+    switch (type) {
+        case 'basic':
+            showBrowserNotificationWithSettings('Тестовое уведомление', {
+                body: 'Это тестовое уведомление для проверки работы системы',
+                icon: './icons/icon-192x192.svg'
+            }, 'general');
+            break;
+        case 'task':
+            showBrowserNotificationWithSettings('Задание выполнено! 🎉', {
+                body: 'Изучение грамматики - получено 150 XP',
+                icon: './icons/icon-192x192.svg'
+            }, 'task');
+            break;
+        case 'level':
+            showBrowserNotificationWithSettings('Поздравляем!', {
+                body: '⭐ Новый уровень! Теперь вы 15 уровня',
+                icon: './icons/icon-192x192.svg'
+            }, 'level');
+            break;
+    }
+}
+
+// Экспорт функций для глобального использования
+window.toggleNotificationSettings = toggleNotificationSettings;
+window.hideNotificationSettings = hideNotificationSettings;
+window.toggleNotificationSetting = toggleNotificationSetting;
+window.updateReminderTime = updateReminderTime;
+window.saveNotificationSettings = saveNotificationSettings;
+window.testNotification = testNotification;
+window.loadNotificationSettings = loadNotificationSettings;
+
+console.log('🔔 Notification settings functions registered globally');
         
         
